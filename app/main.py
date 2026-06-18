@@ -1,9 +1,24 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
+import os
 from pydantic import BaseModel
 import joblib
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
+allowed_origins = [
+"http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+SECRET_KEY = os.getenv("BACKEND_SECRET_KEY")
 model = joblib.load("ml/model.pkl")
 
 
@@ -52,8 +67,15 @@ def home():
 
 
 @app.post("/predict")
-def predict(transaction: Transaction):
-
+def predict(
+    transaction: Transaction,
+    x_api_key: str = Header(None)
+):
+    if x_api_key != SECRET_KEY:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized"
+        )
     features = [[
     transaction.Time,
     transaction.V1,
